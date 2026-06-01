@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MechanicShop.Api/MechanicShop.Api.csproj" />
+    <Project Path="src/MechanicShop.Application/MechanicShop.Application.csproj" />
+    <Project Path="src/MechanicShop.Domain/MechanicShop.Domain.csproj" />
+    <Project Path="src/MechanicShop.Infrastructure/MechanicShop.Infrastructure.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,41 @@
+using MechanicShop.Domain.Common.Results;
+
+namespace MechanicShop.Domain.Invoices;
+
+public static class InvoiceErrors
+{
+    public static readonly Error WorkOrderIdInvalid = Error.Validation(
+        code: "Invoice.WorkOrderId.Invalid",
+        description: "WorkOrderId is invalid"
+    );
+
+    public static readonly Error LineItemsEmpty = Error.Validation(
+        code: "Invoice.LineItems.Empty",
+        description: "Invoice must have line items"
+    );
+
+    public static readonly Error InvoiceLocked = Error.Validation(
+        code: "Invoice.Locked",
+        description: "Invoice is locked"
+    );
+
+    public static readonly Error DiscountNegative = Error.Validation(
+        code: "Invoice.Discount.Negative",
+        description: "Discount cannot be negative"
+    );
+
+    public static readonly Error TaxRateNegative = Error.Validation(
+        code: "Invoice.TaxRate.Negative",
+        description: "TaxRate cannot be negative"
+    );
+
+    public static readonly Error DiscountExceedsSubtotal = Error.Validation(
+        code: "Invoice.Discount.ExceedsSubtotal",
+        description: "Discount exceeds subtotal"
+    );
+
+    public static readonly Error ActualCostsNegative = Error.Validation(
+        code: "Invoice.costs.Negative",
+        description: "Actual labor and parts costs cannot be negative"
+    );
+}
