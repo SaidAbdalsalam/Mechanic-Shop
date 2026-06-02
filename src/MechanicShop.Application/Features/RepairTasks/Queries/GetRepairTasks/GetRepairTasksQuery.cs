@@ -10,5 +10,5 @@ public sealed record GetRepairTasksQuery() : ICachedQuery<Result<List<RepairTask
 
     public TimeSpan Expiration => TimeSpan.FromMinutes(10);
 
-    public string[] Tags => ["repair-tasks"];
+    public string[] Tags => ["repair-task"];
 }

@@ -1,4 +1,5 @@
 using MechanicShop.Api.DependencyInjection;
+using MechanicShop.Api.Infrastructure;
 using MechanicShop.Infrastructure.Data;
 using MechanicShop.Infrastructure.RealTime;
 using Scalar.AspNetCore;
@@ -38,7 +39,7 @@ else
     app.UseHsts();
 }
 
-app.UseCoreMiddlewares(builder.Configuration);
+app.UseCoreMiddlewares(builder.Configuration, app.Environment);
 
 app.MapControllers();
 

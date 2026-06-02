@@ -85,7 +85,7 @@ public sealed class RepairTask : AuditableEntity
 
     public Result<Updated> UpsertParts(List<Part> incomingParts)
     {
-        _parts.RemoveAll(existing => incomingParts.All(p => existing.Id == p.Id));
+        _parts.RemoveAll(existing => incomingParts.All(p => existing.Id != p.Id));
 
         foreach (var incoming in incomingParts)
         {

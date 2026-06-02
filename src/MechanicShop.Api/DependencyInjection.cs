@@ -218,12 +218,17 @@ public static class DependencyInjection
 
     public static IApplicationBuilder UseCoreMiddlewares(
         this IApplicationBuilder app,
-        IConfiguration configuration
+        IConfiguration configuration,
+        IWebHostEnvironment env
     )
     {
         app.UseExceptionHandler();
         app.UseStatusCodePages();
-        app.UseHttpsRedirection();
+        app.UseMiddleware<RequestLogContextMiddleware>();
+        if (!env.IsDevelopment())
+        {
+            app.UseHttpsRedirection();
+        }
         app.UseSerilogRequestLogging();
         app.UseRouting();
         app.UseCors(configuration["AppSettings:CorsPolicyName"]!);

@@ -6,7 +6,7 @@ namespace MechanicShop.Application.Features.RepairTasks.Queries.GetRepairTaskByI
 
 public sealed record GetRepairTaskByIdQuery(Guid RepairTaskId) : ICachedQuery<Result<RepairTaskDto>>
 {
-    public string CacheKey => $"repair-task_{RepairTaskId}";
+    public string CacheKey => $"repair-tasks_{RepairTaskId}";
 
     public TimeSpan Expiration => TimeSpan.FromMinutes(10);
 

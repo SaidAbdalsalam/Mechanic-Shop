@@ -32,7 +32,7 @@ public sealed class GetDailyScheduleQueryHandler(IAppDbContext Context, TimeProv
             .Where(wo =>
                 wo.StartAtUtc < endUtc
                 && wo.EndAtUtc > startUtc
-                && (query.LaborId == null || wo.Id == query.LaborId)
+                && (query.LaborId == null || wo.LaborId == query.LaborId)
             )
             .Include(w => w.RepairTasks)
             .Include(w => w.Vehicle)
@@ -57,7 +57,7 @@ public sealed class GetDailyScheduleQueryHandler(IAppDbContext Context, TimeProv
                 var utcStart = TimeZoneInfo.ConvertTimeToUtc(current, query.TimeZone);
                 var utcEnd = TimeZoneInfo.ConvertTimeToUtc(next, query.TimeZone);
                 var workOrder = woBySpot.FirstOrDefault(wo =>
-                    wo.StartAtUtc < utcEnd && wo.EndAtUtc < utcStart
+                    wo.StartAtUtc < utcEnd && wo.EndAtUtc > utcStart
                 );
 
                 if (workOrder != null)

@@ -38,7 +38,7 @@ public class OverdueBookingCleanupService(
                 var db = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
                 var cutOff = _dateTime
                     .GetUtcNow()
-                    .AddMinutes(_appSettings.BookingCancellationThresholdMinutes);
+                    .AddMinutes(-_appSettings.BookingCancellationThresholdMinutes);
 
                 var overdue = await db
                     .WorkOrders.Where(w =>

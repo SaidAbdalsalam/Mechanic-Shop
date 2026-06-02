@@ -122,9 +122,9 @@ public sealed class CustomersController(ISender sender) : ApiController
         var command = new UpdateCustomerCommand(
             customerId,
             request.Name,
+            request.Email,
             request.PhoneNumber,
-            request.Address,
-            request.Email
+            request.Address
         );
 
         var result = await sender.Send(command, ct);

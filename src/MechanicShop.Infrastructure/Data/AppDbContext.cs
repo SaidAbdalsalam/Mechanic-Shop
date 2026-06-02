@@ -34,33 +34,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
 
     public override async Task<int> SaveChangesAsync(CancellationToken ct)
     {
-        var result = await base.SaveChangesAsync(ct);
-        if (result >= 1)
-        {
-            await DispatchDomainEventsAsync(ct);
-        }
-        return result;
-    }
-
-    private async Task DispatchDomainEventsAsync(CancellationToken ct)
-    {
-        var domainEntities = ChangeTracker
-            .Entries()
-            .Where(e => e.Entity is Entity entity && entity.DomainEvents.Count != 0)
-            .Select(e => (Entity)e.Entity)
+        var entities = ChangeTracker
+            .Entries<Entity>()
+            .Where(e => e.Entity.DomainEvents.Count != 0)
+            .Select(e => e.Entity)
             .ToList();
+        var events = entities.SelectMany(e => e.DomainEvents).ToList();
 
-        var domainEvents = domainEntities.SelectMany(e => e.DomainEvents).ToList();
+        var result = await base.SaveChangesAsync(ct);
 
-        foreach (var domainEvent in domainEvents)
-        {
-            await publisher.Publish(domainEvent);
-        }
+        foreach (var domainEvent in events)
+            await publisher.Publish(domainEvent, ct);
 
-        foreach (var domainEntity in domainEntities)
-        {
-            domainEntity.ClearDomainEvents();
-        }
+        foreach (var entity in entities)
+            entity.ClearDomainEvents();
+        return result;
     }
 
     protected override void OnModelCreating(ModelBuilder builder)
