@@ -78,6 +78,37 @@ services:
     restart: unless-stopped
 
   # ══════════════════════════════════════════════════
+  #  PROMETHEUS (الطبقة التي كانت ناقصة 🎯)
+  # ══════════════════════════════════════════════════
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mechanic_prometheus
+    volumes:
+      - ./containers/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ══════════════════════════════════════════════════
+  #  GRAFANA 
+  # ══════════════════════════════════════════════════
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mechanic_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=YourStrongPwd 
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ══════════════════════════════════════════════════
   #  MECHANICSHOP API
   # ══════════════════════════════════════════════════
   api:
@@ -149,3 +180,7 @@ volumes:
     name: mechanic_redis_data
   seq_data:
     name: mechanic_seq_data
+  prometheus_data:      
+    name: mechanic_prometheus_data
+  grafana_data:        
+    name: mechanic_grafana_data
