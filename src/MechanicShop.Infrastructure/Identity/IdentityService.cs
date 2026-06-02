@@ -107,7 +107,10 @@ public sealed class IdentityService(
             return errors;
         }
 
-        if (!string.IsNullOrWhiteSpace(role))
+        var confirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        await _userManager.ConfirmEmailAsync(user, confirmationToken);
+
+        if (!string.IsNullOrEmpty(role))
         {
             await _userManager.AddToRoleAsync(user, role);
         }
