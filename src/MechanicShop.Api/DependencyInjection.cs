@@ -224,6 +224,7 @@ public static class DependencyInjection
     {
         app.UseExceptionHandler();
         app.UseStatusCodePages();
+        app.UseOpenTelemetryPrometheusScrapingEndpoint();
         app.UseMiddleware<RequestLogContextMiddleware>();
         if (!env.IsDevelopment())
         {
