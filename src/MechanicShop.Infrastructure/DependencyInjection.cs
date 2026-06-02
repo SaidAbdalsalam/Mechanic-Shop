@@ -95,7 +95,8 @@ public static class DependencyInjection
                 options.SignIn.RequireConfirmedEmail = false;
             })
             .AddRoles<IdentityRole>()
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders();
 
         services.AddScoped<IAuthorizationHandler, LaborAssignedHandler>();
 

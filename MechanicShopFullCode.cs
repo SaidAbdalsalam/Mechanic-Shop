@@ -223,12 +223,17 @@ public static class DependencyInjection
 
     public static IApplicationBuilder UseCoreMiddlewares(
         this IApplicationBuilder app,
-        IConfiguration configuration
+        IConfiguration configuration,
+        IWebHostEnvironment env
     )
     {
         app.UseExceptionHandler();
         app.UseStatusCodePages();
-        app.UseHttpsRedirection();
+        app.UseMiddleware<RequestLogContextMiddleware>();
+        if (!env.IsDevelopment())
+        {
+            app.UseHttpsRedirection();
+        }
         app.UseSerilogRequestLogging();
         app.UseRouting();
         app.UseCors(configuration["AppSettings:CorsPolicyName"]!);
@@ -244,6 +249,7 @@ public static class DependencyInjection
 ======= C:\Users\HP\OneDrive\Desktop\MechanicShop\src\MechanicShop.Api\Program.cs =======
 
 using MechanicShop.Api.DependencyInjection;
+using MechanicShop.Api.Infrastructure;
 using MechanicShop.Infrastructure.Data;
 using MechanicShop.Infrastructure.RealTime;
 using Scalar.AspNetCore;
@@ -283,7 +289,7 @@ else
     app.UseHsts();
 }
 
-app.UseCoreMiddlewares(builder.Configuration);
+app.UseCoreMiddlewares(builder.Configuration, app.Environment);
 
 app.MapControllers();
 
@@ -473,9 +479,9 @@ public sealed class CustomersController(ISender sender) : ApiController
         var command = new UpdateCustomerCommand(
             customerId,
             request.Name,
+            request.Email,
             request.PhoneNumber,
-            request.Address,
-            request.Email
+            request.Address
         );
 
         var result = await sender.Send(command, ct);
@@ -1382,7 +1388,7 @@ public sealed class RequestLogContextMiddleware(RequestDelegate next)
 {
     private readonly RequestDelegate _next = next;
 
-    public Task InvoveAsync(HttpContext context)
+    public Task InvokeAsync(HttpContext context)
     {
         using (LogContext.PushProperty("CorrelationId", context.TraceIdentifier))
         {
@@ -3162,7 +3168,7 @@ namespace MechanicShop.Application.Features.Customers.GetAllCustomers.Queries;
 
 public sealed record GetCustomersQuery : ICachedQuery<Result<List<CustomerDto>>>
 {
-    public string CacheKey => $"customers";
+    public string CacheKey => "customers";
 
     public string[] Tags => ["customer"];
     public TimeSpan Expiration => TimeSpan.FromMinutes(10);
@@ -4999,7 +5005,7 @@ namespace MechanicShop.Application.Features.RepairTasks.Queries.GetRepairTaskByI
 
 public sealed record GetRepairTaskByIdQuery(Guid RepairTaskId) : ICachedQuery<Result<RepairTaskDto>>
 {
-    public string CacheKey => $"repair-task_{RepairTaskId}";
+    public string CacheKey => $"repair-tasks_{RepairTaskId}";
 
     public TimeSpan Expiration => TimeSpan.FromMinutes(10);
 
@@ -5082,7 +5088,7 @@ public sealed record GetRepairTasksQuery() : ICachedQuery<Result<List<RepairTask
 
     public TimeSpan Expiration => TimeSpan.FromMinutes(10);
 
-    public string[] Tags => ["repair-tasks"];
+    public string[] Tags => ["repair-task"];
 }
 
 ======= C:\Users\HP\OneDrive\Desktop\MechanicShop\src\MechanicShop.Application\Features\RepairTasks\Queries\GetRepairTasks\GetRepairTasksQueryHandler.cs =======
@@ -5208,7 +5214,7 @@ public sealed class GetDailyScheduleQueryHandler(IAppDbContext Context, TimeProv
             .Where(wo =>
                 wo.StartAtUtc < endUtc
                 && wo.EndAtUtc > startUtc
-                && (query.LaborId == null || wo.Id == query.LaborId)
+                && (query.LaborId == null || wo.LaborId == query.LaborId)
             )
             .Include(w => w.RepairTasks)
             .Include(w => w.Vehicle)
@@ -5233,7 +5239,7 @@ public sealed class GetDailyScheduleQueryHandler(IAppDbContext Context, TimeProv
                 var utcStart = TimeZoneInfo.ConvertTimeToUtc(current, query.TimeZone);
                 var utcEnd = TimeZoneInfo.ConvertTimeToUtc(next, query.TimeZone);
                 var workOrder = woBySpot.FirstOrDefault(wo =>
-                    wo.StartAtUtc < utcEnd && wo.EndAtUtc < utcStart
+                    wo.StartAtUtc < utcEnd && wo.EndAtUtc > utcStart
                 );
 
                 if (workOrder != null)
@@ -7656,7 +7662,7 @@ public sealed class RepairTask : AuditableEntity
 
     public Result<Updated> UpsertParts(List<Part> incomingParts)
     {
-        _parts.RemoveAll(existing => incomingParts.All(p => existing.Id == p.Id));
+        _parts.RemoveAll(existing => incomingParts.All(p => existing.Id != p.Id));
 
         foreach (var incoming in incomingParts)
         {
@@ -8373,9 +8379,11 @@ public static class DependencyInjection
                 options.Password.RequireLowercase = false;
                 options.Password.RequiredUniqueChars = 1;
                 options.SignIn.RequireConfirmedAccount = false;
+                options.SignIn.RequireConfirmedEmail = false;
             })
             .AddRoles<IdentityRole>()
-            .AddEntityFrameworkStores<AppDbContext>();
+            .AddEntityFrameworkStores<AppDbContext>()
+            .AddDefaultTokenProviders();
 
         services.AddScoped<IAuthorizationHandler, LaborAssignedHandler>();
 
@@ -8455,7 +8463,7 @@ public class OverdueBookingCleanupService(
                 var db = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
                 var cutOff = _dateTime
                     .GetUtcNow()
-                    .AddMinutes(_appSettings.BookingCancellationThresholdMinutes);
+                    .AddMinutes(-_appSettings.BookingCancellationThresholdMinutes);
 
                 var overdue = await db
                     .WorkOrders.Where(w =>
@@ -8536,33 +8544,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
 
     public override async Task<int> SaveChangesAsync(CancellationToken ct)
     {
-        var result = await base.SaveChangesAsync(ct);
-        if (result >= 1)
-        {
-            await DispatchDomainEventsAsync(ct);
-        }
-        return result;
-    }
-
-    private async Task DispatchDomainEventsAsync(CancellationToken ct)
-    {
-        var domainEntities = ChangeTracker
-            .Entries()
-            .Where(e => e.Entity is Entity entity && entity.DomainEvents.Count != 0)
-            .Select(e => (Entity)e.Entity)
+        var entities = ChangeTracker
+            .Entries<Entity>()
+            .Where(e => e.Entity.DomainEvents.Count != 0)
+            .Select(e => e.Entity)
             .ToList();
+        var events = entities.SelectMany(e => e.DomainEvents).ToList();
 
-        var domainEvents = domainEntities.SelectMany(e => e.DomainEvents).ToList();
+        var result = await base.SaveChangesAsync(ct);
 
-        foreach (var domainEvent in domainEvents)
-        {
-            await publisher.Publish(domainEvent);
-        }
+        foreach (var domainEvent in events)
+            await publisher.Publish(domainEvent, ct);
 
-        foreach (var domainEntity in domainEntities)
-        {
-            domainEntity.ClearDomainEvents();
-        }
+        foreach (var entity in entities)
+            entity.ClearDomainEvents();
+        return result;
     }
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -11943,7 +11939,10 @@ public sealed class IdentityService(
             return errors;
         }
 
-        if (!string.IsNullOrWhiteSpace(role))
+        var confirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        await _userManager.ConfirmEmailAsync(user, confirmationToken);
+
+        if (!string.IsNullOrEmpty(role))
         {
             await _userManager.AddToRoleAsync(user, role);
         }
