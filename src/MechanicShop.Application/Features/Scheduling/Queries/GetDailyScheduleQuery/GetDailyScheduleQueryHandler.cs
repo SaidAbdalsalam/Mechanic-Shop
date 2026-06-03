@@ -91,8 +91,8 @@ public sealed class GetDailyScheduleQueryHandler(IAppDbContext Context, TimeProv
                         new AvailabilitySlotDto
                         {
                             Spot = spot,
-                            StartAt = startUtc,
-                            EndAt = endUtc,
+                            StartAt = utcStart,
+                            EndAt = utcEnd,
                             WorkOrderLocked = false,
                             IsOccupied = false,
                             IsAvailable = current >= now,

@@ -50,7 +50,8 @@ public sealed class AssignLaborCommandHandler(
             workOrder.EndAtUtc,
             command.WorkOrderId
         );
-
+        if (isLaborOccupied)
+            return ApplicationErrors.LaborOccupied;
         var updateLaborResult = workOrder.UpdateLabor(command.LaborId);
 
         if (updateLaborResult.IsError)

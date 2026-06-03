@@ -55,18 +55,26 @@ public sealed class RelocateWorkOrderCommandHandler(
             _logger.LogWarning("Spot: {Spot} is not available.", workOrder.Spot.ToString());
             return spotIsAvailable.Errors;
         }
-        var laborIsOccupied = await _workOrderPolicy.IsLaborOccupied(
+        var isLaborOccupied = await _workOrderPolicy.IsLaborOccupied(
             workOrder.LaborId,
             command.NewStartAt,
             endAt,
             command.WorkOrderId
         );
+
+        if (isLaborOccupied)
+            return ApplicationErrors.LaborOccupied;
+
         var vehicleIsScheduled = await _workOrderPolicy.IsVehicleAlreadyScheduled(
             workOrder.VehicleId,
             command.NewStartAt,
             endAt,
             command.WorkOrderId
         );
+
+        if (vehicleIsScheduled)
+            return ApplicationErrors.VehicleSchedulingConflict;
+
         var updateTimingResult = workOrder.UpdateTiming(command.NewStartAt, endAt, _timeProvider);
         if (updateTimingResult.IsError)
         {

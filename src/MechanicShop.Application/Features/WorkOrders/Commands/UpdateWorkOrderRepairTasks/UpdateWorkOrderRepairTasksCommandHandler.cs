@@ -95,12 +95,15 @@ public sealed class UpdateWorkOrderRepairTasksCommandHandler(
             return spotCheckResult.Errors;
         }
 
-        var laborIsOccupied = await _workOrderPolicy.IsLaborOccupied(
+        var isLaborOccupied = await _workOrderPolicy.IsLaborOccupied(
             workOrder.LaborId,
             workOrder.StartAtUtc,
             endAt,
             workOrder.Id
         );
+
+        if (isLaborOccupied)
+            return ApplicationErrors.LaborOccupied;
 
         var timingResult = workOrder.UpdateTiming(workOrder.StartAtUtc, endAt, _timeProvider);
 
