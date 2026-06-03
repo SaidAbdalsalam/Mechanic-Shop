@@ -5274,8 +5274,8 @@ public sealed class GetDailyScheduleQueryHandler(IAppDbContext Context, TimeProv
                         new AvailabilitySlotDto
                         {
                             Spot = spot,
-                            StartAt = startUtc,
-                            EndAt = endUtc,
+                            StartAt = utcStart,
+                            EndAt = utcEnd,
                             WorkOrderLocked = false,
                             IsOccupied = false,
                             IsAvailable = current >= now,
@@ -5356,7 +5356,8 @@ public sealed class AssignLaborCommandHandler(
             workOrder.EndAtUtc,
             command.WorkOrderId
         );
-
+        if (isLaborOccupied)
+            return ApplicationErrors.LaborOccupied;
         var updateLaborResult = workOrder.UpdateLabor(command.LaborId);
 
         if (updateLaborResult.IsError)
@@ -5692,18 +5693,26 @@ public sealed class RelocateWorkOrderCommandHandler(
             _logger.LogWarning("Spot: {Spot} is not available.", workOrder.Spot.ToString());
             return spotIsAvailable.Errors;
         }
-        var laborIsOccupied = await _workOrderPolicy.IsLaborOccupied(
+        var isLaborOccupied = await _workOrderPolicy.IsLaborOccupied(
             workOrder.LaborId,
             command.NewStartAt,
             endAt,
             command.WorkOrderId
         );
+
+        if (isLaborOccupied)
+            return ApplicationErrors.LaborOccupied;
+
         var vehicleIsScheduled = await _workOrderPolicy.IsVehicleAlreadyScheduled(
             workOrder.VehicleId,
             command.NewStartAt,
             endAt,
             command.WorkOrderId
         );
+
+        if (vehicleIsScheduled)
+            return ApplicationErrors.VehicleSchedulingConflict;
+
         var updateTimingResult = workOrder.UpdateTiming(command.NewStartAt, endAt, _timeProvider);
         if (updateTimingResult.IsError)
         {
@@ -5948,12 +5957,15 @@ public sealed class UpdateWorkOrderRepairTasksCommandHandler(
             return spotCheckResult.Errors;
         }
 
-        var laborIsOccupied = await _workOrderPolicy.IsLaborOccupied(
+        var isLaborOccupied = await _workOrderPolicy.IsLaborOccupied(
             workOrder.LaborId,
             workOrder.StartAtUtc,
             endAt,
             workOrder.Id
         );
+
+        if (isLaborOccupied)
+            return ApplicationErrors.LaborOccupied;
 
         var timingResult = workOrder.UpdateTiming(workOrder.StartAtUtc, endAt, _timeProvider);
 
