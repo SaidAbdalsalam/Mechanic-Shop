@@ -90,7 +90,7 @@ public sealed class Result<TValue> : IResult<TValue>
     public TValueNext Match<TValueNext>(
         Func<TValue, TValueNext> onValue,
         Func<List<Error>, TValueNext> onError
-    ) => IsSuccess ? onValue(Value!) : onError(Errors);
+    ) => IsSuccess ? onValue.Invoke(Value) : onError(Errors);
 
     public static implicit operator Result<TValue>(Error error) => new(error);
 

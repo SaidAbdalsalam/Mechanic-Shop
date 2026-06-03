@@ -9,6 +9,7 @@ using MechanicShop.Application.Features.Customers.Commands.UpdateVehicle;
 using MechanicShop.Application.Features.Customers.DTOs;
 using MechanicShop.Application.Features.Customers.GetAllCustomers.Queries;
 using MechanicShop.Application.Features.Customers.Queries.GetCustomerById;
+using MechanicShop.Domain.Common.Results;
 using MechanicShop.Domain.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -34,7 +35,7 @@ public sealed class CustomersController(ISender sender) : ApiController
     {
         var result = await sender.Send(new GetCustomersQuery(), ct);
 
-        return result.Match(response => Ok(response), Problem);
+        return result.Match(response => Ok(response), errors => Problem(errors));
     }
 
     [HttpGet("{customerId:guid}", Name = "GetCustomerById")]
@@ -49,7 +50,8 @@ public sealed class CustomersController(ISender sender) : ApiController
     public async Task<IActionResult> GetById(Guid customerId, CancellationToken ct)
     {
         var result = await sender.Send(new GetCustomerByIdQuery(customerId), ct);
-        return result.Match(response => Ok(response), Problem);
+
+        return result.Match(response => Ok(response), errors => Problem(errors));
     }
 
     [HttpPost]

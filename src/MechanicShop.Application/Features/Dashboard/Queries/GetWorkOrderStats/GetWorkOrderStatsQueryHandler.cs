@@ -4,6 +4,7 @@ using MechanicShop.Domain.Common.Results;
 using MechanicShop.Domain.WorkOrders;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+
 namespace MechanicShop.Application.Features.Dashboard.Queries.GetWorkOrderStats;
 
 public sealed class GetWorkOrderStatsQueryHandler(IAppDbContext Context)
@@ -25,7 +26,6 @@ public sealed class GetWorkOrderStatsQueryHandler(IAppDbContext Context)
         var query = _context
             .WorkOrders.AsNoTracking()
             .Where(wo => wo.StartAtUtc >= utcStart && wo.StartAtUtc < utcEnd);
-
 
         var totalWorkOrders = await query.CountAsync(ct);
 
@@ -55,34 +55,36 @@ public sealed class GetWorkOrderStatsQueryHandler(IAppDbContext Context)
             };
         }
 
-        var stats = await query.GroupBy(x => 1)
-        .Select(g => new
-        {
-            Scheduled = g.Count(wo => wo.State == WorkOrderState.Scheduled),
-            InProgress = g.Count(wo => wo.State == WorkOrderState.InProgress),
-            Completed = g.Count(wo => wo.State == WorkOrderState.Completed),
-            Cancelled = g.Count(wo => wo.State == WorkOrderState.Cancelled),
-        }).FirstOrDefaultAsync(ct);
+        var stats = await query
+            .GroupBy(x => 1)
+            .Select(g => new
+            {
+                Scheduled = g.Count(wo => wo.State == WorkOrderState.Scheduled),
+                InProgress = g.Count(wo => wo.State == WorkOrderState.InProgress),
+                Completed = g.Count(wo => wo.State == WorkOrderState.Completed),
+                Cancelled = g.Count(wo => wo.State == WorkOrderState.Cancelled),
+            })
+            .FirstOrDefaultAsync(ct);
 
-       var financialTotals = await query
-       .Where(wo => wo.Invoice != null)
-       .Select(wo => new
-       {
-           LaborCost = wo.Invoice!.ActualLaborCost,
-           PartsCost = wo.Invoice.ActualPartsCost,
-           DiscountAmount = wo.Invoice!.DiscountAmount ?? 0m,
-           TaxRate = wo.Invoice!.TaxRate,
-           GrossSubtotal = wo.Invoice!.LineItems.Sum(li => li.Quantity * li.UnitPrice)
-       })
-       .GroupBy(wo => 1)
-       .Select(g => new
-       {
-           TotalRevenue = g.Sum(x => x.GrossSubtotal * (1 + x.TaxRate)),
-           TotalPartsCost = g.Sum(x => x.PartsCost),
-           TotalLaborCost = g.Sum(x => x.LaborCost),
-           TotalTax = g.Sum(x => (x.GrossSubtotal - x.DiscountAmount) * x.TaxRate),
-       })
-       .FirstOrDefaultAsync(ct);
+        var financialTotals = await query
+            .Where(wo => wo.Invoice != null)
+            .Select(wo => new
+            {
+                LaborCost = wo.Invoice!.ActualLaborCost,
+                PartsCost = wo.Invoice.ActualPartsCost,
+                DiscountAmount = wo.Invoice!.DiscountAmount ?? 0m,
+                TaxRate = wo.Invoice!.TaxRate,
+                GrossSubtotal = wo.Invoice!.LineItems.Sum(li => li.Quantity * li.UnitPrice),
+            })
+            .GroupBy(wo => 1)
+            .Select(g => new
+            {
+                TotalRevenue = g.Sum(x => x.GrossSubtotal * (1 + x.TaxRate)),
+                TotalPartsCost = g.Sum(x => x.PartsCost),
+                TotalLaborCost = g.Sum(x => x.LaborCost),
+                TotalTax = g.Sum(x => (x.GrossSubtotal - x.DiscountAmount) * x.TaxRate),
+            })
+            .FirstOrDefaultAsync(ct);
 
         var totalRevenue = financialTotals?.TotalRevenue ?? 0;
         var totalPartCost = financialTotals?.TotalPartsCost ?? 0;
