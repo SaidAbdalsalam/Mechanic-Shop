@@ -7635,7 +7635,7 @@ public sealed class RepairTask : AuditableEntity
             return RepairTaskErrors.NameRequired;
         }
 
-        if (!Enum.IsDefined(typeof(RepairDurationInMinutes), estimatedDurationInMins))
+        if (!Enum.IsDefined<RepairDurationInMinutes>(estimatedDurationInMins))
         {
             return RepairTaskErrors.DurationInvalid;
         }
@@ -7658,7 +7658,7 @@ public sealed class RepairTask : AuditableEntity
             return RepairTaskErrors.NameRequired;
         }
 
-        if (!Enum.IsDefined(estimatedDurationInMins))
+        if (!Enum.IsDefined<RepairDurationInMinutes>(estimatedDurationInMins))
         {
             return RepairTaskErrors.DurationInvalid;
         }
